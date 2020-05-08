@@ -65,9 +65,7 @@ def rhyme_check(text1,text2,rhyme_dictionary,reverse_rhyme_dictionary):
         elif (last_word1 in rhyme_dictionary) and (last_word2 in rhyme_dictionary) and (rhyme_dictionary[last_word1] == rhyme_dictionary[last_word2]):
             return True
         else:
-            print("(rhyme_dictionary[last_word1] == rhyme_dictionary[last_word2]): ")  
-            print(rhyme_dictionary[last_word1]) 
-            print(rhyme_dictionary[last_word2])
+            print("(rhyme_dictionary[last_word1] != rhyme_dictionary[last_word2])")  
             return False
        
 
