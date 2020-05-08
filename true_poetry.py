@@ -18,9 +18,9 @@ def text_to_meter(text, stress_dictionary):
     #remove any punctuation
     for ch in str.punctuation:                                                                                                     
         s = s.replace(ch, "")     
-#split the text into individual words
+    #split the text into individual words
     split_list = list(s.split(" ")) 
-#find the stress for individual words
+    #find the stress for individual words
     line_stress=""
     for word in split_list:
         if len(word)>0:
@@ -32,6 +32,8 @@ def text_to_meter(text, stress_dictionary):
 
 def rhyme_check(text1,text2,rhyme_dictionary,reverse_rhyme_dictionary):
     #checks whether text1 and text2 rhyme according to a pronunciation dictionary.
+    text1=text1.strip().lower()
+    text2=text2.strip().lower()
     if text2 =="":
         if text1 =="":
             return True
@@ -42,24 +44,39 @@ def rhyme_check(text1,text2,rhyme_dictionary,reverse_rhyme_dictionary):
             if last_word1 in rhyme_dictionary and len(reverse_rhyme_dictionary[rhyme_dictionary[last_word1]])>1:
                 return True
             else:
+                print("last_word1 in rhyme_dictionary:" )
+                print(last_word1 in rhyme_dictionary)
+                print("len(reverse_rhyme_dictionary[rhyme_dictionary[last_word1]])>1:")
+                print( len(reverse_rhyme_dictionary[rhyme_dictionary[last_word1]])>1)
                 return False
     else:
         text1_words = text1.split(" ")
         last_word1 = text1_words[-1]
+        if last_word1[-1] in {".","!",",","?",":",";"}: 
+            last_word1 = last_word1[:-1]
         text2_words = text2.split(" ")
         last_word2 = text2_words[-1]
+        if last_word2[-1] in {".","!",",","?",":",";"}: 
+            last_word2 = last_word2[:-1]
         if last_word1 == last_word2:
             #prevent a word rhyming with itself
+            print("word rhymes with itself")
             return False
         elif (last_word1 in rhyme_dictionary) and (last_word2 in rhyme_dictionary) and (rhyme_dictionary[last_word1] == rhyme_dictionary[last_word2]):
             return True
         else:
+            print("(rhyme_dictionary[last_word1] == rhyme_dictionary[last_word2]): ")  
+            print(rhyme_dictionary[last_word1]) 
+            print(rhyme_dictionary[last_word2])
             return False
        
 
 def compare_meters(meter1,meter2):
     #checks whether meter1 is plausibly matching meter2. meter1 can include unknown ? stresses. 
     matchflag=False
+    if len(meter1)>0:
+        if meter1[-1]=="?":
+            meter1 = meter1[:-1]
     if len(meter1)<=len(meter2):
         matchflag=True
         for character1,character2 in zip(meter1,meter2):
@@ -74,45 +91,48 @@ def compare_meters(meter1,meter2):
     #    matchflag = False  
     return matchflag
 
-def grow_branches(sentence_so_far, probs, input_probability,past, h, prompt_length,rhyme,target_meter):
+def grow_branches(these_tokens, probs, input_probability,past, h, prompt_length,target_rhyme,target_meter):
     #recursive function to find all sentence completions
-    global complete_list
     global model
-    global stress_dictionary
     global tokenizer
+    global stress_dictionary
     global rhyme_dictionary
     global reverse_rhyme_dictionary    
     global bad_rhymes
     global punctuation
-    found = 0
-    #has_children = False
-    text_sentence = tokenizer.decode(sentence_so_far[prompt_length:])
-    if len(rhyme)>0:
-        rhyme_tokens =  tokenizer.encode(rhyme,add_prefix_space=True)
-        cue = rhyme_tokens[-1]
-        if cue in {11,26,13,198,0,30}:
-            cue = rhyme_tokens[-2]
-    meter = text_to_meter(text_sentence,stress_dictionary)
-    meter_check = compare_meters(meter,target_meter)
-    offset = randint(0,3)
-    #we only want to search through "good" terms. Since the last term has to rhyme, we loosen the definition of good a little.
-    if len(meter)>=len(target_meter)-1:
-        if len(rhyme)>0:
-            for each_rhyme in bad_rhymes:
-                probs[each_rhyme]=0
+    found = None
+    this_text_sentence = tokenizer.decode(these_tokens[prompt_length:])
+    if len(target_rhyme)>0:
+        #find out what the word you have to rhyme with is.
+        target_rhyme_tokens =  tokenizer.encode(target_rhyme,add_prefix_space=True)
+        target_cue = target_rhyme_tokens[-1]
+        #if the last token is punctuation, skip it for finding the rhyme word.
+        if target_cue in {11,26,13,198,0,30}:
+            target_cue = target_rhyme_tokens[-2]
+    this_meter = text_to_meter(this_text_sentence,stress_dictionary)
+    meter_check = compare_meters(this_meter,target_meter)
+    offset = randint(0,2)
+    if len(this_meter)>=len(target_meter)-1:
+        # words like "is" and "has" are common, but unly rhyme with "ms." and "jazz." So don't use them.
+        for each_rhyme in bad_rhymes:
+               probs[each_rhyme]=0
+        if len(target_rhyme)>0:
             #don't rhyme with yourself
-            probs[cue] = 0
+            probs[target_cue] = 0
             # only allow words that rhyme with cue
             for t in range(0,50257):
-                if t in big_rhymesets[cue]:
+                if t in big_rhymesets[target_cue]:
                     pass
                 else:
                     probs[t] = 0
         sorted_probability_list = sorted(enumerate(probs), key=lambda x: x[1], reverse=True)
         short_probability_list = sorted_probability_list[0+offset:25+offset]
-    elif len(meter)>len(target_meter)-3:
+    elif len(this_meter)>len(target_meter)-3:
         sorted_probability_list = sorted(enumerate(probs), key=lambda x: x[1], reverse=True)
         short_probability_list = sorted_probability_list[0+offset:100+offset]
+    elif len(this_meter)<2:
+        sorted_probability_list = sorted(enumerate(probs), key=lambda x: x[1], reverse=True)
+        short_probability_list = sorted_probability_list
     else:
         sorted_probability_list = sorted(enumerate(probs), key=lambda x: x[1], reverse=True)
         short_probability_list = sorted_probability_list[0+offset:25+offset]
@@ -120,38 +140,47 @@ def grow_branches(sentence_so_far, probs, input_probability,past, h, prompt_leng
     if len(short_probability_list)>2:
         for (this_token,this_probability) in short_probability_list:
             next_probability = this_probability * input_probability
-            sentence_and_probability = (sentence_so_far, input_probability)
-            next_sentence = sentence_so_far.copy()
-            next_sentence.append(this_token)
-            text_sentence = tokenizer.decode(next_sentence[prompt_length:])
-            meter = text_to_meter(text_sentence,stress_dictionary)
-            meter_check = compare_meters(meter,target_meter)
-            if len(meter)>len(target_meter):
+            next_tokens = these_tokens.copy()
+            next_tokens.append(this_token)
+            next_text_sentence = tokenizer.decode(next_tokens[prompt_length:])
+            print(next_text_sentence)
+            next_meter = text_to_meter(next_text_sentence,stress_dictionary)
+            meter_check = compare_meters(next_meter,target_meter)
+            if len(next_meter)>len(target_meter):
                 pass
-            elif len(meter)==len(target_meter):
+            elif len(next_meter)==len(target_meter):
                 if meter_check:
-                    rhyme_checks_out = rhyme_check(text_sentence,rhyme,rhyme_dictionary,reverse_rhyme_dictionary)
+                    rhyme_checks_out = rhyme_check(next_text_sentence,target_rhyme,rhyme_dictionary,reverse_rhyme_dictionary)
                     if rhyme_checks_out:
                          # the line has completed successfully
-                        sentence_and_probability = (next_sentence[prompt_length:], next_probability)
-                        complete_list.append(sentence_and_probability)
-                        print("*** " + text_sentence)
-                        return 1
-                    print(text_sentence +"\t" + meter + '\t' + rhyme)
-                    #print(next_sentence[prompt_length:])
-                    return 2
+                        (word_completion_list,next_past) = expand_node(next_tokens,past)
+                        sorted_word_completion_list = sorted(enumerate(word_completion_list), key=lambda x: x[1], reverse=True)
+                        potential_word_completion = tokenizer.decode(sorted_word_completion_list[0][0])
+                        if potential_word_completion[0] in str.ascii_lowercase:
+                            print("last word too long: " + next_text_sentence + potential_word_completion)
+                            return False
+                        else:
+                            #if the next word is punctuation, include it on this line instead.
+                            if sorted_word_completion_list[0][0] in {0,11,13,25,26,30,553}:
+                                next_tokens.append(sorted_word_completion_list[0][0])
+                                next_text_sentence = tokenizer.decode(next_tokens[prompt_length:])
+                            print(potential_word_completion + "*** " + next_text_sentence + "\t" + next_meter)
+                            return next_tokens[prompt_length:]
+                    print("rhyme doesn't check out: " + next_text_sentence +"\t" + next_meter + '\t' + target_rhyme)
+                    #print(next_tokens[prompt_length:])
+                    return False
                 else:
-                    return 2
-            if next_probability < h or (sentence_so_far[-1] in punctuation and this_token in punctuation) or (len(sentence_so_far[prompt_length+1:])>20):
+                    return False
+            if next_probability < h or (these_tokens[-1] in punctuation and this_token in punctuation) or (len(these_tokens[prompt_length+1:])>20):
                 pass
             else:
-                found = 2
+                found = False
                 if meter_check:
-                    (next_probability_list,next_past) = expand_node(next_sentence,past)
-                    found = grow_branches(next_sentence,next_probability_list, next_probability, next_past, h,prompt_length,rhyme,target_meter)
-                if found == 1:
-                    return 1
-    return 2
+                    (next_probability_list,next_past) = expand_node(next_tokens,past)
+                    found = grow_branches(next_tokens,next_probability_list, next_probability, next_past, h,prompt_length,target_rhyme,target_meter)
+                if found != False:
+                    return found
+    return False
 
 def expand_node(sentence, past):
     #finds probabilities for the next token using gpt-2
@@ -238,12 +267,10 @@ for rhyme in boring_rhymes:
 print("rhymes loaded")
 
 #load gpt-2 (takes a few seconds)                
-  
 model = GPT2LMHeadModel.from_pretrained("poetry")
 print("model loaded")
 
 #from here on must be run every time you want to create a new poem.
-complete_list = []
 with torch.no_grad():
     raw_prompt = input("starting prompt: ")
     probability_threshhold = 0
@@ -251,83 +278,19 @@ with torch.no_grad():
     original_length = len(prompt)
     past = None
     (probs, past) = expand_node(prompt, None) 
-    #lines that don't need to rhyme are given empty strings
-    rhyme = ""
     target_meter ="~`~`~`~`"
-    test = grow_branches(prompt,probs,1,past,probability_threshhold,len(prompt),rhyme,target_meter)
-
-    if test == 2:
-        print("BAD")
-    #the new line to rhyme with is the just created line
-    rhyme1 = tokenizer.decode(complete_list[-1][0])
-    #the new prompt is the previous prompt plus the new line, with newlines.
-    prompt = prompt + [198] + complete_list[-1][0] +[198]
-    (probs, past) = expand_node(prompt, None) 
-    test = grow_branches(prompt,probs,1,past,probability_threshhold,len(prompt),rhyme,target_meter)
-    if test == 2:
-        print("BAD")
-        
-    rhyme2 = tokenizer.decode(complete_list[-1][0])
-    #this next line doesn't rhyme with anything.
-    rhyme = rhyme1 
-    prompt = prompt + [198] + complete_list[-1][0] +[198]
-    (probs, past) = expand_node(prompt, None) 
-    test = grow_branches(prompt,probs,1,past,probability_threshhold,len(prompt),rhyme,target_meter)
-    if test == 2:
-        print("BAD")
-        
-    rhyme = rhyme2
-    prompt = prompt + [198] + complete_list[-1][0] +[198]
-    (probs, past) = expand_node(prompt, None) 
-    test = grow_branches(prompt,probs,1,past,probability_threshhold,len(prompt),rhyme,target_meter)
-    if test == 2:
-        print("BAD")
-        
-    rhyme = "" 
-    prompt = prompt + [198] + complete_list[-1][0] +[198]
-    (probs, past) = expand_node(prompt, None) 
-    test = grow_branches(prompt,probs,1,past,probability_threshhold,len(prompt),rhyme,target_meter)
-    if test == 2:
-        print("BAD")
-        
-    rhyme3 = tokenizer.decode(complete_list[-1][0])
-    prompt = prompt + [198] + complete_list[-1][0] +[198]
-    (probs, past) = expand_node(prompt, None) 
-    rhyme = ""
-    test = grow_branches(prompt,probs,1,past,probability_threshhold,len(prompt),rhyme,target_meter)
-    if test == 2:
-        print("BAD")
-        
-    rhyme4 = tokenizer.decode(complete_list[-1][0])        
-    rhyme = rhyme3
-    prompt = prompt + [198] + complete_list[-1][0] +[198]
-    (probs, past) = expand_node(prompt, None) 
-    test = grow_branches(prompt,probs,1,past,probability_threshhold,len(prompt),rhyme,target_meter)
-
-    prompt = prompt + [198] + complete_list[-1][0] +[198]
-    rhyme = rhyme4
-    (probs, past) = expand_node(prompt, None) 
-    test = grow_branches(prompt,probs,1,past,probability_threshhold,len(prompt),rhyme,target_meter)
-    if test == 2:
-        print("BAD")
-    
-    rhyme = ""
-    prompt = prompt + [198] + complete_list[-1][0] +[198]
-    (probs, past) = expand_node(prompt, None) 
-    test = grow_branches(prompt,probs,1,past,probability_threshhold,len(prompt),rhyme,target_meter)
-    if test == 2:
-        print("BAD")
-    
-    prompt = prompt + [198] + complete_list[-1][0] +[198]
-    rhyme5 = tokenizer.decode(complete_list[-1][0])
-    rhyme = rhyme5
-    (probs, past) = expand_node(prompt, None) 
-    test = grow_branches(prompt,probs,1,past,probability_threshhold,len(prompt),rhyme,target_meter)
-    if test == 2:
-        print("BAD")
-    prompt = prompt + [198] + complete_list[-1][0] +[198]
+    poem_line = [""] * 10
+    for  line in range(0,10): 
+        rhyme_scheme = ["","",poem_line[0],poem_line[1],"","",poem_line[4],poem_line[5],"",poem_line[8]]
+        target_rhyme = tokenizer.decode(rhyme_scheme[line])
+        this_line = grow_branches(prompt,probs,1,past,probability_threshhold,len(prompt),target_rhyme,target_meter)
+        poem_line[line] = this_line
+        prompt = prompt  + this_line
+        (probs, past) = expand_node(prompt, None) 
     print()
     print(tokenizer.decode(prompt[original_length:]))
+    for line in poem_line:
+        print(tokenizer.decode(line))
         
         
             
