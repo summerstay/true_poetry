@@ -68,8 +68,7 @@ def rhyme_check(text1,text2,rhyme_dictionary,reverse_rhyme_dictionary):
             rhyme2 = rhyme2.replace("0","1")
             rhyme1 = rhyme1.replace("IH","EH")
             rhyme2 = rhyme2.replace("IH","EH")
-            print(rhyme1)
-            print(rhyme2)
+            #print(rhyme1 + " vs. " +  rhyme2)
             if (rhyme1 == rhyme2):
                 return True
             else:
