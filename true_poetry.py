@@ -108,7 +108,7 @@ def grow_branches(these_tokens, probs, input_probability,past, h, prompt_length,
     this_meter = text_to_meter(this_text_sentence,stress_dictionary)
     meter_check = compare_meters(this_meter,target_meter)
     offset = randint(0,2)
-    if len(this_meter)>=len(target_meter)-1:
+    if len(this_meter)==len(target_meter)-1:
         # words like "is" and "has" are common, but unly rhyme with "ms." and "jazz." So don't use them.
         for each_rhyme in bad_rhymes:
                probs[each_rhyme]=0
@@ -132,8 +132,8 @@ def grow_branches(these_tokens, probs, input_probability,past, h, prompt_length,
     else:
         sorted_probability_list = sorted(enumerate(probs), key=lambda x: x[1], reverse=True)
         short_probability_list = sorted_probability_list[0+offset:25+offset]
-        
-    if len(short_probability_list)>2:
+    short_probability_list = [i for i in short_probability_list if i[1] != 0]
+    if len(short_probability_list)>5:
         for (this_token,this_probability) in short_probability_list:
             next_probability = this_probability * input_probability
             next_tokens = these_tokens.copy()
@@ -174,7 +174,7 @@ def grow_branches(these_tokens, probs, input_probability,past, h, prompt_length,
                 found = False
                 if meter_check:
                     (next_probability_list,next_past) = expand_node(next_tokens,past)
-# for debugging     inputs = [next_tokens,next_probability_list, next_probability, next_past, h,prompt_length,target_rhyme,target_meter]
+                    inputs = [next_tokens,next_probability_list, next_probability, next_past, h,prompt_length,target_rhyme,target_meter]
                     found = grow_branches(next_tokens,next_probability_list, next_probability, next_past, h,prompt_length,target_rhyme,target_meter)
                 if found != False:
                     return found
