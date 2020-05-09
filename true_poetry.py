@@ -177,7 +177,7 @@ def grow_branches(these_tokens, probs, input_probability,past, h, prompt_length,
                 found = False
                 if meter_check:
                     (next_probability_list,next_past) = expand_node(next_tokens,past)
-                    inputs = [next_tokens,next_probability_list, next_probability, next_past, h,prompt_length,target_rhyme,target_meter]
+# for debugging     inputs = [next_tokens,next_probability_list, next_probability, next_past, h,prompt_length,target_rhyme,target_meter]
                     found = grow_branches(next_tokens,next_probability_list, next_probability, next_past, h,prompt_length,target_rhyme,target_meter)
                 if found != False:
                     return found
