@@ -2,7 +2,7 @@ import string as str
 import torch
 from transformers import GPT2Tokenizer, GPT2LMHeadModel
 import torch.nn.functional as F
-from random import randint
+from random import randint, seed
 import math
 import pickle 
 
@@ -73,7 +73,7 @@ def compare_meters(meter1,meter2):
     #checks whether meter1 is plausibly matching meter2. meter1 can include unknown ? stresses. 
     matchflag=False
     if len(meter1)>0:
-        if meter1[-1]=="?":
+        if meter1[-1]=="*":
             meter1 = meter1[:-1]
     if len(meter1)<=len(meter2):
         matchflag=True
@@ -98,6 +98,7 @@ def grow_branches(these_tokens, probs, input_probability,past, h, prompt_length,
     global reverse_rhyme_dictionary    
     global bad_rhymes
     global punctuation
+    global inputs
     found = None
     this_text_sentence = tokenizer.decode(these_tokens[prompt_length:])
     if len(target_rhyme)>0:
@@ -141,9 +142,10 @@ def grow_branches(these_tokens, probs, input_probability,past, h, prompt_length,
             next_tokens = these_tokens.copy()
             next_tokens.append(this_token)
             next_text_sentence = tokenizer.decode(next_tokens[prompt_length:])
-            print(next_text_sentence)
             next_meter = text_to_meter(next_text_sentence,stress_dictionary)
             meter_check = compare_meters(next_meter,target_meter)
+            print(next_text_sentence + "\t" + next_meter, end = " ")
+            print(meter_check)
             if len(next_meter)>len(target_meter):
                 pass
             elif len(next_meter)==len(target_meter):
@@ -175,6 +177,7 @@ def grow_branches(these_tokens, probs, input_probability,past, h, prompt_length,
                 found = False
                 if meter_check:
                     (next_probability_list,next_past) = expand_node(next_tokens,past)
+                    inputs = [next_tokens,next_probability_list, next_probability, next_past, h,prompt_length,target_rhyme,target_meter]
                     found = grow_branches(next_tokens,next_probability_list, next_probability, next_past, h,prompt_length,target_rhyme,target_meter)
                 if found != False:
                     return found
@@ -269,6 +272,8 @@ model = GPT2LMHeadModel.from_pretrained("poetry")
 print("model loaded")
 
 #from here on must be run every time you want to create a new poem.
+seed(30)
+inputs = []
 with torch.no_grad():
     raw_prompt = input("starting prompt: ")
     probability_threshhold = 0
@@ -276,7 +281,7 @@ with torch.no_grad():
     original_length = len(prompt)
     past = None
     (probs, past) = expand_node(prompt, None) 
-    target_meter ="~`~`~`~`"
+    target_meter ="~`~`~`~`~`"
     poem_line = [""] * 10
     for  line in range(0,10): 
         rhyme_scheme = ["","",poem_line[0],poem_line[1],"","",poem_line[4],poem_line[5],"",poem_line[8]]
