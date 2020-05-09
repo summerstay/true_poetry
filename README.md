@@ -18,6 +18,7 @@ If you have any good ideas on how to avoid passing a ton of variables or using a
 You can choose between limerick, ballad, or sonnet, or create your own rhyme scheme with a little editing of the code.
 
 A few random samples. I have touched up just the punctuation by hand a bit:
+__________________
 
 BALLAD
 
@@ -37,7 +38,7 @@ and in the snow of clouds I will
 
 be buried as you are.
 
-
+__________________
 SONNET
 
 The mixture should continue beating when
@@ -60,7 +61,7 @@ the mixture from becoming soft. You will
 
 be looking for to lift, or curt but still.
 
-
+__________________
 SONNET
 
 I see myself in all, myself
@@ -83,7 +84,7 @@ that I, the last. The last and best,
 
 the last, and by which I am blessed.
 
-
+__________________
 OTHER
 
 The snow began a little thick and white
@@ -98,7 +99,7 @@ and empty sky: a sky, a sky. The night,
 
 The moon and wind, the moon, and wind and, white.
 
-
+__________________
 OTHER
 
 The children run, but cannot find
@@ -113,7 +114,7 @@ The window open flies. But no--
 
 The windows shut, and blinds below.
 
-
+__________________
 LIMERICK
 
 The Maximus army were led
@@ -126,7 +127,7 @@ at fist and forearm,
 
 and he had his fire-flies red
 
-
+__________________
 LIMERICK
 
 And then, as in dreams, she began
@@ -139,7 +140,7 @@ could sense each degree
 
 of freedom in movement. I can
 
-
+__________________
 LIMERICK
 
 And there was an Englishman who
@@ -152,7 +153,7 @@ his wife; And she went
 
 to see that he lived. And the two
 
-
+__________________
 LIMERICK
 
 There was a young lady aboard
@@ -164,3 +165,4 @@ the sea, she ignored
 the sails, for on board
 
 she saw, in the galley, my lord.
+__________________
