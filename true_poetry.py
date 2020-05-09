@@ -41,7 +41,7 @@ def rhyme_check(text1,text2,rhyme_dictionary,reverse_rhyme_dictionary):
             #only words that have enough potential rhymes are allowed.
             text1_words = text1.split(" ")
             last_word1 = text1_words[-1]
-            if last_word1 in rhyme_dictionary and len(reverse_rhyme_dictionary[rhyme_dictionary[last_word1]])>1:
+            if last_word1 in rhyme_dictionary and len(reverse_rhyme_dictionary[rhyme_dictionary[last_word1]])>20:
                 return True
             else:
                 print("last_word1 in rhyme_dictionary:" )
@@ -115,6 +115,8 @@ def grow_branches(these_tokens, probs, input_probability,past, h, prompt_length,
             target_cue = target_rhyme_tokens[-2]
     this_meter = text_to_meter(this_text_sentence,stress_dictionary)
     offset = randint(0,2)
+    for prob in punctuation.difference({13, 0, 11, 30, 25, 26, 6, 1, 7, 8, 438, 12}):
+        probs[prob] = 0
     if len(this_meter)==len(target_meter)-1:
         # words like "is" and "has" are common, but unly rhyme with "ms." and "jazz." So don't use them.
         for each_rhyme in bad_rhymes:
@@ -129,7 +131,7 @@ def grow_branches(these_tokens, probs, input_probability,past, h, prompt_length,
                 else:
                     probs[t] = 0
         sorted_probability_list = sorted(enumerate(probs), key=lambda x: x[1], reverse=True)
-        short_probability_list = sorted_probability_list[0+offset:25+offset]
+        short_probability_list = sorted_probability_list[0+offset:100+offset]
     elif len(this_meter)>len(target_meter)-3:
         sorted_probability_list = sorted(enumerate(probs), key=lambda x: x[1], reverse=True)
         short_probability_list = sorted_probability_list[0+offset:100+offset]
@@ -140,7 +142,7 @@ def grow_branches(these_tokens, probs, input_probability,past, h, prompt_length,
         sorted_probability_list = sorted(enumerate(probs), key=lambda x: x[1], reverse=True)
         short_probability_list = sorted_probability_list[0+offset:25+offset]
     short_probability_list = [i for i in short_probability_list if i[1] != 0]
-    if short_probability_list[0][1] > .05:
+    if len(short_probability_list)>1 and short_probability_list[0][1] > .05:
         for (this_token,this_probability) in short_probability_list:
             next_probability = this_probability * input_probability
             next_tokens = these_tokens.copy()
@@ -148,7 +150,7 @@ def grow_branches(these_tokens, probs, input_probability,past, h, prompt_length,
             next_text_sentence = tokenizer.decode(next_tokens[prompt_length:])
             next_meter = text_to_meter(next_text_sentence,stress_dictionary)
             meter_check = compare_meters(next_meter,target_meter)
-            #print(next_text_sentence + "\t" + next_meter, end = " ")
+            print(next_text_sentence)
             #print(meter_check)
             if len(next_meter)>len(target_meter):
                 pass
@@ -164,11 +166,7 @@ def grow_branches(these_tokens, probs, input_probability,past, h, prompt_length,
                             print("last word too long: " + next_text_sentence + potential_word_completion)
                             return False
                         else:
-                            #if the next word is punctuation, include it on this line instead.
-                            if sorted_word_completion_list[0][0] in {0,11,13,25,26,30,553}:
-                                next_tokens.append(sorted_word_completion_list[0][0])
-                                next_text_sentence = tokenizer.decode(next_tokens[prompt_length:])
-                            print(potential_word_completion + "*** " + next_text_sentence + "\t" + next_meter)
+                            print("*** " + next_text_sentence + "\t" + next_meter)
                             return next_tokens[prompt_length:]
                     print("non-rhyme: " + next_text_sentence +"\t" + next_meter + '\t' + target_rhyme)
                     #print(next_tokens[prompt_length:])
@@ -283,8 +281,38 @@ print("rhymes loaded")
 model = GPT2LMHeadModel.from_pretrained("poetry")
 print("model loaded")
 
+def poem_scheme(kind):
+    global poem_line
+    if kind == "limerick":
+        number_of_lines = 5
+        meter_scheme = [""] * number_of_lines
+        for line in {0,1,4}:
+            meter_scheme[line] = "~`~~`~~`" 
+        for line in {2,3}:
+            meter_scheme[line] = "~`~~`"
+        # meter_scheme[0] = "``~~`" # if you want to start with a prompt like "There was a"
+        rhyme_scheme = ["",poem_line[0],"",poem_line[2],poem_line[0]]
+    if kind == "sonnet":
+        number_of_lines = 10
+        meter_scheme = [""] * number_of_lines
+        for line in range(0,number_of_lines-1):
+            meter_scheme[line] = "~`~`~`~`~`"
+            rhyme_scheme = ["","",poem_line[0],poem_line[1],"","",poem_line[4],poem_line[5],"",poem_line[8]]
+    if kind == "ballad":
+        number_of_lines = 8
+        meter_scheme = [""] * number_of_lines
+        for line in {0,2,4,6}:
+            meter_scheme[line] = "~`~`~`~`"
+        for line in {1,3,5,7}:
+            meter_scheme[line] = "~`~`~`"
+        rhyme_scheme = ["","","",poem_line[1],"","","",poem_line[5]]
+    return number_of_lines, rhyme_scheme, meter_scheme
+        
+            
+    
+    
 #from here on must be run every time you want to create a new poem.
-seed(30)
+seed(29)
 inputs = []
 with torch.no_grad():
     raw_prompt = input("starting prompt: ")
@@ -293,19 +321,37 @@ with torch.no_grad():
     original_length = len(prompt)
     past = None
     (probs, past) = expand_node(prompt, None) 
-    target_meter ="~`~`~`~`~`"
-    poem_line = [""] * 10
-    for  line in range(0,10): 
-        rhyme_scheme = ["","",poem_line[0],poem_line[1],"","",poem_line[4],poem_line[5],"",poem_line[8]]
+    scheme = "ballad"
+    poem_line = [""] * 100
+    number_of_lines, rhyme_scheme, meter_scheme = poem_scheme(scheme)
+    poem_line = [""] * number_of_lines  
+    line = 0
+    while line < number_of_lines:
+        number_of_lines, rhyme_scheme, meter_scheme = poem_scheme(scheme)
         target_rhyme = tokenizer.decode(rhyme_scheme[line])
+        target_meter = meter_scheme[line]
         this_line = grow_branches(prompt,probs,1,past,probability_threshhold,len(prompt),target_rhyme,target_meter)
         poem_line[line] = this_line
+        if this_line == False:
+            line = 0
+            prompt = tokenizer.encode(raw_prompt)
+            original_length = len(prompt)
+            past = None
+            (probs, past) = expand_node(prompt, None) 
+            continue
+        else:
+            line = line + 1
         prompt = prompt  + this_line
         (probs, past) = expand_node(prompt, None) 
     print()
     print(tokenizer.decode(prompt[original_length:]))
-    for line in poem_line:
-        print(tokenizer.decode(line))
+    print()
+    print(tokenizer.decode(poem_line[0]))
+    for line in range(1,number_of_lines+1):
+        if poem_line[line][0] in {13, 0, 11, 30, 25, 26, 6, 1, 7, 8, 438, 12}:
+            poem_line[line-1].append(poem_line[line][0])
+            poem_line[line] = poem_line[line][1:]   
+        print(tokenizer.decode(poem_line[line]))
         
         
             
