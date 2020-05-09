@@ -72,9 +72,6 @@ def rhyme_check(text1,text2,rhyme_dictionary,reverse_rhyme_dictionary):
 def compare_meters(meter1,meter2):
     #checks whether meter1 is plausibly matching meter2. meter1 can include unknown ? stresses. 
     matchflag=False
-    if len(meter1)>0:
-        if meter1[-1]=="*":
-            meter1 = meter1[:-1]
     if len(meter1)<=len(meter2):
         matchflag=True
         for character1,character2 in zip(meter1,meter2):
