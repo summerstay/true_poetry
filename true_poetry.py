@@ -60,12 +60,21 @@ def rhyme_check(text1,text2,rhyme_dictionary,reverse_rhyme_dictionary):
             last_word2 = last_word2[:-1]
         if last_word1 == last_word2:
             #prevent a word rhyming with itself
-            print("word rhymes with itself")
             return False
-        elif (last_word1 in rhyme_dictionary) and (last_word2 in rhyme_dictionary) and (rhyme_dictionary[last_word1] == rhyme_dictionary[last_word2]):
-            return True
+        if (last_word1 in rhyme_dictionary) and (last_word2 in rhyme_dictionary):
+            rhyme1 = rhyme_dictionary[last_word1]
+            rhyme2 = rhyme_dictionary[last_word2]
+            rhyme1 = rhyme1.replace("0","1")
+            rhyme2 = rhyme2.replace("0","1")
+            rhyme1 = rhyme1.replace("IH","EH")
+            rhyme2 = rhyme2.replace("IH","EH")
+            print(rhyme1)
+            print(rhyme2)
+            if (rhyme1 == rhyme2):
+                return True
+            else:
+                return False
         else:
-            print("(rhyme_dictionary[last_word1] != rhyme_dictionary[last_word2])")  
             return False
        
 
@@ -106,7 +115,6 @@ def grow_branches(these_tokens, probs, input_probability,past, h, prompt_length,
         if target_cue in {11,26,13,198,0,30}:
             target_cue = target_rhyme_tokens[-2]
     this_meter = text_to_meter(this_text_sentence,stress_dictionary)
-    meter_check = compare_meters(this_meter,target_meter)
     offset = randint(0,2)
     if len(this_meter)==len(target_meter)-1:
         # words like "is" and "has" are common, but unly rhyme with "ms." and "jazz." So don't use them.
@@ -133,7 +141,7 @@ def grow_branches(these_tokens, probs, input_probability,past, h, prompt_length,
         sorted_probability_list = sorted(enumerate(probs), key=lambda x: x[1], reverse=True)
         short_probability_list = sorted_probability_list[0+offset:25+offset]
     short_probability_list = [i for i in short_probability_list if i[1] != 0]
-    if len(short_probability_list)>5:
+    if short_probability_list[0][1] > .05:
         for (this_token,this_probability) in short_probability_list:
             next_probability = this_probability * input_probability
             next_tokens = these_tokens.copy()
@@ -141,8 +149,8 @@ def grow_branches(these_tokens, probs, input_probability,past, h, prompt_length,
             next_text_sentence = tokenizer.decode(next_tokens[prompt_length:])
             next_meter = text_to_meter(next_text_sentence,stress_dictionary)
             meter_check = compare_meters(next_meter,target_meter)
-            print(next_text_sentence + "\t" + next_meter, end = " ")
-            print(meter_check)
+            #print(next_text_sentence + "\t" + next_meter, end = " ")
+            #print(meter_check)
             if len(next_meter)>len(target_meter):
                 pass
             elif len(next_meter)==len(target_meter):
@@ -163,7 +171,7 @@ def grow_branches(these_tokens, probs, input_probability,past, h, prompt_length,
                                 next_text_sentence = tokenizer.decode(next_tokens[prompt_length:])
                             print(potential_word_completion + "*** " + next_text_sentence + "\t" + next_meter)
                             return next_tokens[prompt_length:]
-                    print("rhyme doesn't check out: " + next_text_sentence +"\t" + next_meter + '\t' + target_rhyme)
+                    print("non-rhyme: " + next_text_sentence +"\t" + next_meter + '\t' + target_rhyme)
                     #print(next_tokens[prompt_length:])
                     return False
                 else:
@@ -239,6 +247,14 @@ for line in pronounce_file:
                 outstring = syllable
         else:
             outstring = outstring + " " + syllable
+    if outstring == "":
+        for syllable in syllables:
+            if join_flag == 0:
+                if "0" in syllable:
+                    join_flag = 1
+                    outstring = syllable
+            else:
+                outstring = outstring + " " + syllable
     rhyme_dictionary[word.lower()] = outstring
     if outstring in reverse_rhyme_dictionary:
         reverse_rhyme_dictionary[outstring].append(word.lower())
