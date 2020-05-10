@@ -347,7 +347,7 @@ with torch.no_grad():
     print(tokenizer.decode(prompt[original_length:]))
     print()
     print(tokenizer.decode(poem_line[0]))
-    for line in range(1,number_of_lines+1):
+    for line in range(1,number_of_lines):
         if poem_line[line][0] in {13, 0, 11, 30, 25, 26, 6, 1, 7, 8, 438, 12}:
             poem_line[line-1].append(poem_line[line][0])
             poem_line[line] = poem_line[line][1:]   
