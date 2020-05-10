@@ -4,6 +4,7 @@ Poetry generator by gpt-2 with meter and rhyme constraints.
 required imports:
 
 come with python: string, random, math, pickle
+
 use pip or conda to install: torch, transformers 
 
 Just run true_poetry.py and type or paste in some text as a prompt and it will generate a sonnet, limerick, or ballad. You should switch to 
