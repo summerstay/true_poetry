@@ -5,7 +5,7 @@ required imports:
 
 string, torch, transformers, random, math, pickle
 
-Just run true_poetry.py and type or paste in some text as a prompt and it will generate a sonnet. You should switch to 
+Just run true_poetry.py and type or paste in some text as a prompt and it will generate a sonnet, limerick, or ballad. You should switch to 
 
 model = GPT2LMHeadModel.from_pretrained("gpt2-xl") 
 
