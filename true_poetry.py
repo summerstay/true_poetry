@@ -321,7 +321,7 @@ with torch.no_grad():
     original_length = len(prompt)
     past = None
     (probs, past) = expand_node(prompt, None) 
-    scheme = "ballad"
+    scheme = input("ballad, limerick, or sonnet? ")
     poem_line = [""] * 100
     number_of_lines, rhyme_scheme, meter_scheme = poem_scheme(scheme)
     poem_line = [""] * number_of_lines  
