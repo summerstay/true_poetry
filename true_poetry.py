@@ -14,7 +14,7 @@ params = Struct()
 params.rhyme_set_size = 20  # if a word will later be rhymed with, at least this many rhyming words must exist
 params.probability_threshold = .00005 # a token must have at least this probability of being the next token 
 params.probability_threshold2 = 0 #total multiplied out probability of entire line of tokens can be no lower than this 
-params.ultimate_expansion = 100 # no more than this many words will be tried as the last syllable for any previous phrase
+params.ultimate_expansion = 30 # no more than this many words will be tried as the last syllable for any previous phrase
 params.penultimate_expansion = 10 # no more than this many words will be tried for the next to last syllable for any previous phrase
 params.other_expansion = 10 # no more than this many words will be tried for the second through next to last syllables of any phrase
 params.random_seed = 29 # if the seed and prompt are the same, the poem will be the same
@@ -378,6 +378,12 @@ def poem_scheme(kind):
         for line in range(0,number_of_lines):
             meter_scheme[line] = "~`~`~`~`~`"
             rhyme_scheme = ["","",poem_line[0],poem_line[1],"","",poem_line[4],poem_line[5],"",poem_line[8]]
+    if kind == "couplets":
+        number_of_lines = 10
+        meter_scheme = [""] * number_of_lines
+        for line in range(0,number_of_lines):
+            meter_scheme[line] = "~`~`~`"
+            rhyme_scheme = ["",poem_line[0],"",poem_line[2],"",poem_line[4],"",poem_line[6],"",poem_line[8]]
     if kind == "ballad":
         number_of_lines = 8
         meter_scheme = [""] * number_of_lines
@@ -396,7 +402,7 @@ with torch.no_grad():
     original_length = len(prompt)
     past = None
     (probs, past) = expand_node(prompt, None) 
-    scheme = input("ballad, limerick, or sonnet? ")
+    scheme = input("ballad, limerick, couplets or sonnet? ")
     poem_line = [""] * 100000 #this just has to be long enough the next line will never complain-- fixed two lines down
     number_of_lines, rhyme_scheme, meter_scheme = poem_scheme(scheme)
     poem_line = [""] * number_of_lines  
