@@ -430,6 +430,10 @@ xprint("rhymes loaded")
 
 #load gpt-2 (takes a few seconds)                
 model = GPT2LMHeadModel.from_pretrained("poetry")
+# replace the line above with the line below for an automatic model download and only slightly reduced performance. 
+# Just be sure to use a prompt that is itself poetic if you want what is generated to sound poetic.
+# model = GPT2LMHeadModel.from_pretrained("gpt2-xl")
+
 xprint("model loaded")
 
 
