@@ -1,5 +1,5 @@
 # true_poetry
-Poetry generator by gpt-2 with meter and rhyme constraints. 
+Poetry generator by gpt-2 with meter and rhyme constraints. See a few examples at the bottom of this readme file.
 
 required imports:
 
@@ -11,13 +11,20 @@ Just run true_poetry.py and type or paste in some text as a prompt and it will g
 
 model = GPT2LMHeadModel.from_pretrained("gpt2-xl") 
 
-if you want it to automatically download the 6GB neural network, but Gwern's finetumed poetry model does a better job, if you have a copy. In the same directory where true_poetry.py is, I have a folder called "poetry." In that folder sits Gwern's pytorch_model.bin and associated small files.
+if you want it to automatically download the 6GB neural network. Gwern's finetumed poetry model does a somewhat better job, if you have a copy. It's a bit tricky to get working, though. In the same directory where true_poetry.py is, I have a folder called "poetry." In that folder sits Gwern's pytorch_model.bin and associated small files.
 
 I downloaded all the files in a zipped tar file using this command:
 
 rsync --verbose rsync://78.46.86.149:873/biggan/2019-12-13-gwern-gpt-2-1.5b-poetry-model-500522.tar.xz ./ 
 
- That download also includes a version of the neural network for use with tensorflow, instead of pytorch. You can discard that.
+this is the version for tensorflow. You then have to convert it for pytorch with the following command (adjust the path as needed):
+
+%env OPENAI_GPT2_CHECKPOINT_PATH=/content/true_poetry/gwern
+
+!transformers-cli convert --model_type gpt2 --tf_checkpoint model-500522
+--config /content/true_poetry/gwern/config.json --pytorch_dump_output /
+
+If that's too much work, just use the gpt2-xl file, it works fine.
 
 As for fine-tuning your own model, Gwern's post about how he did it ( https://www.gwern.net/GPT-2 ) goes into enough detail that I was able to fine tune the 345M size model. But since gpt2-xl is so much better anyway, and it is impossible to train without special hardware, you are probably going to get better results by experimenting with finding just the right prompt and sticking with one of these two models than by training your own model.
 
