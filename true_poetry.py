@@ -395,6 +395,13 @@ def poem_scheme(kind):
         for line in range(0,number_of_lines):
             meter_scheme[line] = "~`~`~`"
             rhyme_scheme = ["",poem_line[0],"",poem_line[2],"",poem_line[4],"",poem_line[6],"",poem_line[8]]
+    if kind == "mini-couplets":
+        number_of_lines = 20
+        meter_scheme = [""] * number_of_lines
+        for line in range(0,number_of_lines):
+            meter_scheme[line] = "~`~`"
+            rhyme_scheme = ["",poem_line[0],"",poem_line[2],"",poem_line[4],"",poem_line[6],"",poem_line[8],"",poem_line[10],"",poem_line[12],"",poem_line[14],"",poem_line[16],"",poem_line[18]]
+            params.ultimate_expansion = 1000
     if kind == "ballad":
         number_of_lines = 8
         meter_scheme = [""] * number_of_lines
@@ -450,6 +457,7 @@ with torch.no_grad():
     for line in range(1,number_of_lines):
         if poem_line[line][0] in acceptable_punctuation:
             poem_line[line-1].append(poem_line[line][0])
-            poem_line[line] = poem_line[line][1:]   
+            poem_line[line] = poem_line[line][1:]
+    for line in range(1,number_of_lines):
         print(tokenizer.decode(poem_line[line]))
         
