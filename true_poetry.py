@@ -241,6 +241,8 @@ def grow_branches(these_tokens, probs, input_probability,past,params, prompt_len
                         else:
                             #success!
                             print("*** " + next_text_sentence + "\t" + next_meter)
+                            xprint(target_rhyme)
+                            xprint(rhyme_checks_out)
                             return next_tokens[prompt_length:]
                     xprint("non-rhyme: " + next_text_sentence +"\t" + next_meter + '\t' + target_rhyme)
                     #print(next_tokens[prompt_length:])
@@ -250,11 +252,17 @@ def grow_branches(these_tokens, probs, input_probability,past,params, prompt_len
                     xprint(next_meter, end="\t")
                     xprint(target_meter)
                     continue
-                    #return False
             #If it starts generating strings of punctuation, it rarely recovers. So I put in this hacky check to prevent it.
-            if next_probability < params.probability_threshold2 or (these_tokens[-2] in punctuation and these_tokens[-1] in punctuation) or (these_tokens[-1] in punctuation and this_token in punctuation) or (len(these_tokens[prompt_length+1:])>20):
-                xprint("failed sentence prob check")
-                return False
+            if next_probability < params.probability_threshold2 or (len(these_tokens)>1 and these_tokens[-2] in punctuation and these_tokens[-1] in punctuation) or (len(these_tokens)>0 and these_tokens[-1] in punctuation and this_token in punctuation) or (len(these_tokens[prompt_length+1:])>20):
+                if len(these_tokens[prompt_length+1:])>1:
+                    xprint("failed sentence prob check")
+                    xprint(next_probability)
+                    xprint(these_tokens)
+                    xprint(len(these_tokens))
+                    # this returns because if one thing fails the probability check the rest will. Also the repeating punctuation thing needs to be nipped in the bud.
+                    return False
+                else:
+                    continue
             else:
                 found = False
                 if meter_check and len(next_meter)<len(target_meter):
@@ -266,8 +274,8 @@ def grow_branches(these_tokens, probs, input_probability,past,params, prompt_len
                     xprint(tokenizer.decode(this_token))
                     (next_probability_list,next_past) = expand_node(next_tokens,past)
                     found = grow_branches(next_tokens,next_probability_list, next_probability, next_past,params,prompt_length,target_rhyme,target_meter)
-                    #xprint("found = ",end ="")
-                    #xprint(found)
+                    xprint("found = ",end ="")
+                    xprint(found)
                 else:
                     xprint("failed meter check 2 or too long", end ="\t")
                     xprint(next_meter, end="\t")
@@ -278,7 +286,7 @@ def grow_branches(these_tokens, probs, input_probability,past,params, prompt_len
                     return found
     else:
         xprint("failed to find any probable continuations")
-        xprint(len(short_probability_list)>1, end ="\t")
+        xprint(len(short_probability_list), end ="\t")
         if len(short_probability_list)>0:
             xprint(short_probability_list[0][1])
         return False
@@ -381,7 +389,7 @@ def poem_scheme(kind):
             meter_scheme[line] = "~`~~`~~`" 
         for line in {2,3}:
             meter_scheme[line] = "~`~~`"
-        meter_scheme[0] = "~`" # if you want to start with a prompt like "There once was a girl from"
+        #meter_scheme[0] = "~`" # if you want to start with a prompt like "There once was a girl from"
         rhyme_scheme = ["",poem_line[0],"",poem_line[2],poem_line[0]]
     if kind == "sonnet":
         number_of_lines = 10
@@ -401,7 +409,7 @@ def poem_scheme(kind):
         for line in range(0,number_of_lines):
             meter_scheme[line] = "~`~`"
             rhyme_scheme = ["",poem_line[0],"",poem_line[2],"",poem_line[4],"",poem_line[6],"",poem_line[8],"",poem_line[10],"",poem_line[12],"",poem_line[14],"",poem_line[16],"",poem_line[18]]
-            params.ultimate_expansion = 1000
+            params.penultimate_expansion = 1000
     if kind == "ballad":
         number_of_lines = 8
         meter_scheme = [""] * number_of_lines
