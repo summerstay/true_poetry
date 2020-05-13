@@ -75,9 +75,15 @@ def rhyme_check(text1,text2,rhyme_dictionary,reverse_rhyme_dictionary,params):
             #only words that have enough potential rhymes are allowed.
             text1_words = text1.split(" ")
             last_word1 = text1_words[-1]
-            enough_rhymes =  len(reverse_rhyme_dictionary[rhyme_dictionary[last_word1]])>params.rhyme_set_size
-            if last_word1 in rhyme_dictionary and enough_rhymes and (not last_word1 in bad_rhymes):         
-                return True
+            if last_word1 in rhyme_dictionary:
+                if rhyme_dictionary[last_word1] in reverse_rhyme_dictionary:
+                    enough_rhymes =  len(reverse_rhyme_dictionary[rhyme_dictionary[last_word1]])>params.rhyme_set_size
+                    if enough_rhymes and (not last_word1 in bad_rhymes):         
+                        return True
+                    else:
+                        return False
+                else:
+                    return False      
             else:
                 #the word isn't in the dictionary or there are not enough other words that rhyme with it.
                 return False
