@@ -83,25 +83,25 @@ be looking for to lift, or curt but still.
 __________________
 SONNET
 
-I see myself in all, myself
+I see, and with my hand I touch the blade,
 
-in thee; I have been so from first
-
-to last; I see the present self
-
-of him I murdered in his burst
-
-of song. I have undone myself,
-
-and all, myself, in that; and my
-
-revenge is now, or will be shelf'd.
-
-I see the last. The last, and by
-
-that I, the last. The last and best,
-
-the last, and by which I am blessed.
+ and feel the steel, and stab myself, and go.
+ 
+ I see, and I confess, that, having played,
+ 
+ I am the fool I was; But that below,
+ 
+ which promised such delight And such despair,
+ 
+ is nothing: it was all: the world and all,
+ 
+ and nothing, I confess, is. For, compare,
+ 
+ that other world of sense; That shining ball,
+ 
+ the soul and senses call; Of this we are,
+ 
+ I hope, in health considered; so afar.
 
 __________________
 OTHER
