@@ -75,22 +75,11 @@ def rhyme_check(text1,text2,rhyme_dictionary,reverse_rhyme_dictionary,params):
             #only words that have enough potential rhymes are allowed.
             text1_words = text1.split(" ")
             last_word1 = text1_words[-1]
-            if last_word1 in rhyme_dictionary and len(reverse_rhyme_dictionary[rhyme_dictionary[last_word1]])>params.rhyme_set_size and (not last_word1 in bad_rhymes):
-                xprint("last_word1 in rhyme_dictionary:" )
-                xprint(last_word1 in rhyme_dictionary)
-                xprint("len(reverse_rhyme_dictionary[rhyme_dictionary[last_word1]])>rhyme_set_size:")
-                xprint( len(reverse_rhyme_dictionary[rhyme_dictionary[last_word1]]))
-                xprint("last word1 in bad rhymes:")
-                xprint(last_word1 in bad_rhymes)
-                xprint("last word 1:")
-                xprint(last_word1)
+            enough_rhymes =  len(reverse_rhyme_dictionary[rhyme_dictionary[last_word1]])>params.rhyme_set_size
+            if last_word1 in rhyme_dictionary and enough_rhymes and (not last_word1 in bad_rhymes):         
                 return True
             else:
                 #the word isn't in the dictionary or there are not enough other words that rhyme with it.
-                xprint("last_word1 in rhyme_dictionary:" )
-                xprint(last_word1 in rhyme_dictionary)
-                xprint("len(reverse_rhyme_dictionary[rhyme_dictionary[last_word1]])>rhyme_set_size:")
-                xprint( len(reverse_rhyme_dictionary[rhyme_dictionary[last_word1]]))
                 return False
     else:
         #the two lines need to actually rhyme
