@@ -220,14 +220,18 @@ def grow_branches(these_tokens, probs, input_probability,past,params, prompt_len
     found = None
     this_text_sentence = tokenizer.decode(these_tokens[prompt_length:])
     if len(these_tokens[prompt_length:])<2:
-        params.probability_threshold = 0        
+        probability_threshold = 0       
+    else: 
+        probability_threshold = params.probability_threshold
     short_probability_list = rhyme_and_meter_filter(this_text_sentence,target_rhyme,target_meter,probs,params)
     #proceed only if there are tokens in the probability list that are sufficiently likely to form a sensible sentence.
     if len(short_probability_list)>1:
         count = 0
         for (this_token,this_probability) in short_probability_list:
-            tokens_are_probable_enough_to_continue = this_probability > params.probability_threshold
+            tokens_are_probable_enough_to_continue = this_probability > probability_threshold
             if tokens_are_probable_enough_to_continue: 
+                xprint(this_probability , end = "\t")
+                xprint(params.probability_threshold, end = "\t")
                 xprint(count+1, end = "/")
                 xprint(len(short_probability_list), end="\t")
                 count = count+1
