@@ -20,7 +20,7 @@ class Struct:
 params = Struct()
 params.rhyme_set_size = 20  # if a word will later be rhymed with, at least this many rhyming words must exist
 params.probability_threshold = .0005 # a token must have at least this probability of being the next token 
-params.probability_threshold2 = 0 #total multiplied out probability of entire line of tokens can be no lower than this 
+params.line_probability_threshold = 0 #total multiplied out probability of entire line of tokens can be no lower than this 
 params.ultimate_expansion = 30 # no more than this many words will be tried as the last syllable for any previous phrase
 params.penultimate_expansion = 10 # no more than this many words will be tried for the next to last syllable for any previous phrase
 params.other_expansion = 10 # no more than this many words will be tried for the second through next to last syllables of any phrase
@@ -223,112 +223,115 @@ def grow_branches(these_tokens, probs, input_probability,past,params, prompt_len
         params.probability_threshold = 0        
     short_probability_list = rhyme_and_meter_filter(this_text_sentence,target_rhyme,target_meter,probs,params)
     #proceed only if there are tokens in the probability list that are sufficiently likely to form a sensible sentence.
-    tokens_are_probable_enough_to_continue = len(short_probability_list)>1 and (short_probability_list[0][1] > params.probability_threshold)
-    if tokens_are_probable_enough_to_continue: 
+    if len(short_probability_list)>1:
         count = 0
         for (this_token,this_probability) in short_probability_list:
-            xprint(count+1, end = "/")
-            xprint(len(short_probability_list), end="\t")
-            count = count+1
-            #the token forms the next extension of the current line.
-            next_probability = this_probability * input_probability
-            next_tokens = these_tokens.copy()
-            next_tokens.append(this_token)
-            next_text_sentence = tokenizer.decode(next_tokens[prompt_length:])
-            next_meter = text_to_meter(next_text_sentence,stress_dictionary)
-            if "*" in next_meter[:-1]:
-                return False
-            meter_check = compare_meters(next_meter,target_meter)
-            xprint(len(next_meter),end = "\t")
-            print(next_text_sentence)
-            #print(meter_check)
-            if len(next_meter)>len(target_meter):
-                xprint("too long")
-                continue
-            elif len(next_meter)==len(target_meter):
-            #this might be a line we want to keep, so we need to verify that the meter and rhyme are good.
-                if meter_check:
-                    rhyme_checks_out = rhyme_check(next_text_sentence,target_rhyme,rhyme_dictionary,reverse_rhyme_dictionary,params)
-                    if rhyme_checks_out:
-                         # the line has completed successfully
-                        (word_completion_list,next_past) = expand_node(next_tokens,past)
-                        sorted_word_completion_list = sorted(enumerate(word_completion_list), key=lambda x: x[1], reverse=True)
-                        # sometimes it generates the first part of a longer word, that happens to be an actual word. This prevents that from messing things up.
-                        potential_word_completion = tokenizer.decode(sorted_word_completion_list[0][0])
-                        all_tokens = set(range(0,50257))
-                        if potential_word_completion[0] in str.ascii_lowercase: #i.e. it starts with a letter instead of a space, so it's continuing a word
-                            xprint("last word too long: " + next_text_sentence + potential_word_completion)
-                            continue
-                        
-                        elif params.line_end_punctuation_constraint == True:
-                            (end_punctuation_list,next_past) = (word_completion_list,next_past)
-                            for token in all_tokens.difference(end_punctuation):
-                                end_punctuation_list[token] = 0
-                            
-                            sorted_end_punctuation_list = sorted(enumerate(end_punctuation_list), key=lambda x: x[1], reverse=True)
-                            punctuation_probability = sorted_end_punctuation_list [0][1]  
-                            if punctuation_probability > params.punctuation_probability_threshold:
-                                #success!
-                                end_punctuation_choice = sorted_end_punctuation_list [0][0] 
-                                xprint(tokenizer.decode(end_punctuation_choice))
-                                xprint(end_punctuation_choice)
-                                next_tokens.append(end_punctuation_choice)
-                                next_text_sentence = tokenizer.decode(next_tokens[prompt_length:])
-                                print("*** " + next_text_sentence + "\t" + next_meter)
-                                return next_tokens[prompt_length:]
-                            else:
-                                print("end punctuation too rare")
-                                continue
-                        else:
-                            #success!
-                            print("*** " + next_text_sentence + "\t" + next_meter)
-                            xprint(target_rhyme)
-                            xprint(rhyme_checks_out)
-                            return next_tokens[prompt_length:]
-                    xprint("non-rhyme: " + next_text_sentence +"\t" + next_meter + '\t' + target_rhyme)
-                    #print(next_tokens[prompt_length:])
-                    continue
-                else:
-                    xprint("failed meter check", end ="\t")
-                    xprint(next_meter, end="\t")
-                    xprint(target_meter)
-                    continue
-            #If it starts generating strings of punctuation, it rarely recovers. So I put in this hacky check to prevent it.
-            punctuation_repeats = (len(these_tokens)>1 and these_tokens[-2] in punctuation and these_tokens[-1] in punctuation) or (len(these_tokens)>0 and these_tokens[-1] in punctuation and this_token in punctuation)
-            line_is_way_too_long = (len(these_tokens[prompt_length+1:])>20)
-            if next_probability < params.probability_threshold2 or punctuation_repeats or line_is_way_too_long:
-                if len(these_tokens[prompt_length+1:])>1:
-                    xprint("failed sentence prob check")
-                    xprint(next_probability)
-                    xprint(these_tokens)
-                    xprint(len(these_tokens))
-                    # this returns because if one thing fails the probability check the rest will. Also the repeating punctuation thing needs to be nipped in the bud.
+            tokens_are_probable_enough_to_continue = this_probability > params.probability_threshold
+            if tokens_are_probable_enough_to_continue: 
+                xprint(count+1, end = "/")
+                xprint(len(short_probability_list), end="\t")
+                count = count+1
+                #the token forms the next extension of the current line.
+                next_probability = this_probability * input_probability
+                next_tokens = these_tokens.copy()
+                next_tokens.append(this_token)
+                next_text_sentence = tokenizer.decode(next_tokens[prompt_length:])
+                next_meter = text_to_meter(next_text_sentence,stress_dictionary)
+                if "*" in next_meter[:-1]:
                     return False
-                else:
-                    #the start of a line gets some leeway so that it doesn't return false and abandon the whole poem.
+                meter_check = compare_meters(next_meter,target_meter)
+                xprint(len(next_meter),end = "\t")
+                print(next_text_sentence)
+                #print(meter_check)
+                if len(next_meter)>len(target_meter):
+                    xprint("too long")
                     continue
-            else:
-                found = False
-                if meter_check and len(next_meter)<len(target_meter):
-                    #this isn't long enough to be a complete line, but it could be the start of a complete line, so we expand it.
-                    xprint("passed")
-                    xprint(these_tokens[prompt_length:])
-                    xprint(this_token)
-                    xprint(tokenizer.decode(these_tokens[prompt_length:]))
-                    xprint(tokenizer.decode(this_token))
-                    (next_probability_list,next_past) = expand_node(next_tokens,past)
-                    found = grow_branches(next_tokens,next_probability_list, next_probability, next_past,params,prompt_length,target_rhyme,target_meter)
-                    xprint("found = ",end ="")
-                    xprint(found)
+                elif len(next_meter)==len(target_meter):
+                #this might be a line we want to keep, so we need to verify that the meter and rhyme are good.
+                    if meter_check:
+                        rhyme_checks_out = rhyme_check(next_text_sentence,target_rhyme,rhyme_dictionary,reverse_rhyme_dictionary,params)
+                        if rhyme_checks_out:
+                             # the line has completed successfully
+                            (word_completion_list,next_past) = expand_node(next_tokens,past)
+                            sorted_word_completion_list = sorted(enumerate(word_completion_list), key=lambda x: x[1], reverse=True)
+                            # sometimes it generates the first part of a longer word, that happens to be an actual word. This prevents that from messing things up.
+                            potential_word_completion = tokenizer.decode(sorted_word_completion_list[0][0])
+                            all_tokens = set(range(0,50257))
+                            if potential_word_completion[0] in str.ascii_lowercase: #i.e. it starts with a letter instead of a space, so it's continuing a word
+                                xprint("last word too long: " + next_text_sentence + potential_word_completion)
+                                continue
+                            
+                            elif params.line_end_punctuation_constraint == True:
+                                (end_punctuation_list,next_past) = (word_completion_list,next_past)
+                                for token in all_tokens.difference(end_punctuation):
+                                    end_punctuation_list[token] = 0
+                                
+                                sorted_end_punctuation_list = sorted(enumerate(end_punctuation_list), key=lambda x: x[1], reverse=True)
+                                punctuation_probability = sorted_end_punctuation_list [0][1]  
+                                if punctuation_probability > params.punctuation_probability_threshold:
+                                    #success!
+                                    end_punctuation_choice = sorted_end_punctuation_list [0][0] 
+                                    xprint(tokenizer.decode(end_punctuation_choice))
+                                    xprint(end_punctuation_choice)
+                                    next_tokens.append(end_punctuation_choice)
+                                    next_text_sentence = tokenizer.decode(next_tokens[prompt_length:])
+                                    print("*** " + next_text_sentence + "\t" + next_meter)
+                                    return next_tokens[prompt_length:]
+                                else:
+                                    print("end punctuation too rare")
+                                    continue
+                            else:
+                                #success!
+                                print("*** " + next_text_sentence + "\t" + next_meter)
+                                xprint(target_rhyme)
+                                xprint(rhyme_checks_out)
+                                return next_tokens[prompt_length:]
+                        xprint("non-rhyme: " + next_text_sentence +"\t" + next_meter + '\t' + target_rhyme)
+                        #print(next_tokens[prompt_length:])
+                        continue
+                    else:
+                        xprint("failed meter check", end ="\t")
+                        xprint(next_meter, end="\t")
+                        xprint(target_meter)
+                        continue
+                #If it starts generating strings of punctuation, it rarely recovers. So I put in this hacky check to prevent it.
+                punctuation_repeats = (len(these_tokens)>1 and these_tokens[-2] in punctuation and these_tokens[-1] in punctuation) or (len(these_tokens)>0 and these_tokens[-1] in punctuation and this_token in punctuation)
+                line_is_way_too_long = (len(these_tokens[prompt_length+1:])>20)
+                if next_probability < params.line_probability_threshold or punctuation_repeats or line_is_way_too_long:
+                    if len(these_tokens[prompt_length+1:])>1:
+                        xprint("failed sentence prob check")
+                        xprint(next_probability)
+                        xprint(these_tokens)
+                        xprint(len(these_tokens))
+                        # this returns because if one thing fails the probability check the rest will. Also the repeating punctuation thing needs to be nipped in the bud.
+                        return False
+                    else:
+                        #the start of a line gets some leeway so that it doesn't return false and abandon the whole poem.
+                        continue
                 else:
-                    xprint("failed meter check 2 or too long", end ="\t")
-                    xprint(next_meter, end="\t")
-                    xprint(target_meter)
-                if found == False:
-                    xprint("found = false")
-                else:
-                    return found
-                continue
+                    found = False
+                    if meter_check and len(next_meter)<len(target_meter):
+                        #this isn't long enough to be a complete line, but it could be the start of a complete line, so we expand it.
+                        xprint("passed")
+                        xprint(these_tokens[prompt_length:])
+                        xprint(this_token)
+                        xprint(tokenizer.decode(these_tokens[prompt_length:]))
+                        xprint(tokenizer.decode(this_token))
+                        (next_probability_list,next_past) = expand_node(next_tokens,past)
+                        found = grow_branches(next_tokens,next_probability_list, next_probability, next_past,params,prompt_length,target_rhyme,target_meter)
+                        xprint("found = ",end ="")
+                        xprint(found)
+                    else:
+                        xprint("failed meter check 2 or too long", end ="\t")
+                        xprint(next_meter, end="\t")
+                        xprint(target_meter)
+                    if found == False:
+                        xprint("found = false")
+                    else:
+                        return found
+                    continue
+        else:
+            return False
     else:
         xprint("failed to find any probable continuations")
         xprint(len(short_probability_list), end ="\t")
