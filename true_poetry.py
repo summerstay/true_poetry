@@ -136,6 +136,8 @@ def compare_meters(test_meter,target_meter):
     
     if len(test_meter)>0 and test_meter[-1]=="*":
         test_meter=test_meter[:-1]
+    if "*" in test_meter[:-1]:
+        return False
     if len(test_meter)<=len(target_meter):
         matchflag=True
         for character1,character2 in zip(test_meter,target_meter):
@@ -234,6 +236,8 @@ def grow_branches(these_tokens, probs, input_probability,past,params, prompt_len
             next_tokens.append(this_token)
             next_text_sentence = tokenizer.decode(next_tokens[prompt_length:])
             next_meter = text_to_meter(next_text_sentence,stress_dictionary)
+            if "*" in next_meter[:-1]:
+                return False
             meter_check = compare_meters(next_meter,target_meter)
             xprint(len(next_meter),end = "\t")
             print(next_text_sentence)
@@ -324,6 +328,7 @@ def grow_branches(these_tokens, probs, input_probability,past,params, prompt_len
                     xprint("found = false")
                 else:
                     return found
+                continue
     else:
         xprint("failed to find any probable continuations")
         xprint(len(short_probability_list), end ="\t")
