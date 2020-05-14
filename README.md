@@ -9,9 +9,9 @@ use pip or conda to install: torch, transformers
 
 Just run true_poetry.py and type or paste in some text as a prompt and it will generate a sonnet, limerick, couplets or a ballad. You should switch to 
 
-model = GPT2LMHeadModel.from_pretrained("gpt2-xl") 
+params.model_name = "gpt2-xl"
 
-if you want it to automatically download the 6GB neural network. Gwern's finetumed poetry model does a somewhat better job, if you have a copy. It's a bit tricky to get working, though. In the same directory where true_poetry.py is, I have a folder called "poetry." In that folder sits Gwern's pytorch_model.bin and associated small files.
+if you want it to automatically download the 6GB neural network. Gwern's finetumed poetry model does a somewhat better job at traditional poetic style, if you have a copy. It's a bit tricky to get working, though. In the same directory where true_poetry.py is, I have a folder called "poetry." In that folder sits Gwern's pytorch_model.bin and associated small files.
 
 I downloaded all the files in a zipped tar file using this command:
 
