@@ -8,7 +8,6 @@ import pickle
 import re
 
 #TO DO: rhyming with multiple lines (e.g. limerick)
-# debug early stopping
 # force last token to end a sentence
 # revise previous lines if we can't find a good rhyme
 
@@ -21,7 +20,7 @@ params = Struct()
 params.rhyme_set_size = 20  # if a word will later be rhymed with, at least this many rhyming words must exist
 params.probability_threshold = .0005 # a token must have at least this probability of being the next token. .05 = better quality but slower; .005 = worse quality but faster
 params.line_probability_threshold = 0 #total multiplied out probability of entire line of tokens can be no lower than this. 0 means this isn't being used.
-params.ultimate_expansion = 30 # no more than this many words will be tried as the last syllable for any previous phrase
+params.ultimate_expansion = 1000 # no more than this many words will be tried as the last syllable for any previous phrase
 params.penultimate_expansion = 10 # no more than this many words will be tried for the next to last syllable for any previous phrase
 params.other_expansion = 10 # no more than this many words will be tried for the second through next to last syllables of any phrase
 params.random_seed = 28 # if the seed and prompt are the same, the poem will be the same
@@ -64,18 +63,26 @@ def text_to_meter(text, stress_dictionary):
                 line_stress = line_stress + "*"
     return line_stress
 
-def rhyme_check(text1,text2,rhyme_dictionary,reverse_rhyme_dictionary,params):
-    #checks whether text1 and text2 rhyme according to a pronunciation dictionary.
+def rhyme_check(text1,target_rhyme_list,rhyme_dictionary,reverse_rhyme_dictionary,params):
+    #checks whether text1 and target_rhyme_line rhyme according to a pronunciation dictionary.
     global acceptable_punctuation
     global bad_rhymes
+    xprint("target_rhyme_list =")
+    xprint(target_rhyme_list)
+    if len(target_rhyme_list)>0:
+        target_rhyme_line = target_rhyme_list[0]
+    else:
+        target_rhyme_line = ""
+    xprint("rhyme_check target_rhyme_line =")
+    xprint(target_rhyme_line)
     #remove punctuation and put both in lower case
     text1=text1.strip().lower()
-    text2=text2.strip().lower()
+    target_rhyme_line=target_rhyme_line.strip().lower()
     #token 0, which is "!", is code for a line that never will be rhymed with.  
-    if text2 =="!":
+    if target_rhyme_line =="!":
         return True
     #the empty string is code for a line that WILL be rhymed with in the future.
-    if text2 =="":
+    if target_rhyme_line =="":
         if text1 =="":
             return True
         else:
@@ -89,28 +96,40 @@ def rhyme_check(text1,text2,rhyme_dictionary,reverse_rhyme_dictionary,params):
                     if enough_rhymes and (not last_word1 in bad_rhymes):         
                         return True
                     else:
+                        xprint("! not enough rhymes or last word 1 in bad_rhymes")
                         return False
                 else:
+                    xprint("! not in reverse dictionary ")
                     return False      
             else:
                 #the word isn't in the dictionary or there are not enough other words that rhyme with it.
+                xprint("! last word 1 not in rhyme dictionary")
                 return False
     else:
         #the two lines need to actually rhyme
         text1_words = text1.split(" ")
         last_word1 = text1_words[-1]
         #remove punctuation from the end of the last words
-        if tokenizer.encode(last_word1[-1])[0] in acceptable_punctuation: 
-            last_word1 = last_word1[:-1]
-        text2_words = text2.split(" ")
-        last_word2 = text2_words[-1]
-        if tokenizer.encode(last_word2[-1])[0] in acceptable_punctuation: 
-            last_word2 = last_word2[:-1]
-        if last_word1 == last_word2:
-            #prevent a word rhyming with itself
-            return False
+        regex = re.compile('[^a-zA-Z]')
+        last_word1 = regex.sub('', last_word1)
+        target_rhyme_line_words = target_rhyme_line.split(" ")
+        last_word2 = target_rhyme_line_words[-1]
+        #if tokenizer.encode(last_word2[-1])[0] in acceptable_punctuation:
+        regex = re.compile('[^a-zA-Z]')
+        last_word2 = regex.sub('', last_word2)
+        for line in target_rhyme_list:
+            target_rhyme_line=line.strip().lower()
+            target_rhyme_line_words = target_rhyme_line.split(" ")
+            last_word2 = target_rhyme_line_words[-1]
+            regex = re.compile('[^a-zA-Z]')
+            last_word2 = regex.sub('', last_word2)
+            print(last_word2)
+            if last_word1 == last_word2:
+                #prevent a word rhyming with itself
+                xprint("! a word is rhyming with itself")
+                return False
         if (last_word1 in rhyme_dictionary) and (last_word2 in rhyme_dictionary):
-             #this is where you allow slant rhymes and forget about meter. Meter is handled elsewhere.
+             #this is where you allow slant rhymes.
             rhyme1 = rhyme_dictionary[last_word1]
             rhyme2 = rhyme_dictionary[last_word2]
             rhyme1 = rhyme1.replace("0","1")
@@ -121,8 +140,12 @@ def rhyme_check(text1,text2,rhyme_dictionary,reverse_rhyme_dictionary,params):
             if (rhyme1 == rhyme2):
                 return True
             else:
+                xprint("! last word1 does not rhyme with last word 2")
                 return False
         else:
+            xprint("! last word 1 or last word 2 not in rhyme dictionary")
+            xprint(last_word1)
+            xprint(last_word2)
             return False
        
 def compare_meters(test_meter,target_meter):
@@ -147,7 +170,7 @@ def compare_meters(test_meter,target_meter):
     #    matchflag = False  
     return matchflag
 
-def rhyme_and_meter_filter(this_text_sentence,target_rhyme,target_meter,probs,params):
+def rhyme_and_meter_filter(this_text_sentence,target_rhyme_list,target_meter,probs,params):
     #returns a sorted list of words which are (usually) compatible with the upcoming rhyme and meter constraints.
     #It's meant to make searching faster, not to be a perfect filter
     global stress_tokens
@@ -158,6 +181,14 @@ def rhyme_and_meter_filter(this_text_sentence,target_rhyme,target_meter,probs,pa
     #this randomization helps prevent repetition, but it's kind of a hack.
     offset = randint(0,2)
     this_meter = text_to_meter(this_text_sentence,stress_dictionary)
+    xprint("target_rhyme_list =")
+    xprint(target_rhyme_list)
+    if len(target_rhyme_list)>0:
+        target_rhyme = target_rhyme_list[0]
+    else:
+        target_rhyme = target_rhyme_list
+    xprint("target_rhyme_list =")
+    xprint(target_rhyme_list)
     
     #meter filter
     next_stresses = target_meter[len(this_meter):min(len(this_meter)+3,len(target_meter)+1)]
@@ -216,8 +247,9 @@ def rhyme_and_meter_filter(this_text_sentence,target_rhyme,target_meter,probs,pa
   
     return short_probability_list
 
-def grow_branches(these_tokens, probs, input_probability,past,params, prompt_length,target_rhyme,target_meter):
+def grow_branches(these_tokens, probs, input_probability,past,params, prompt_length,target_rhyme_list,target_meter):
     #recursive function to find all sentence completions
+    xprint("___________________________________________")
     global model
     global tokenizer
     global stress_dictionary
@@ -236,15 +268,22 @@ def grow_branches(these_tokens, probs, input_probability,past,params, prompt_len
         probability_threshold = 0 # no restrictions on the first tokens in each line.
     else: 
         probability_threshold = params.probability_threshold
-    short_probability_list = rhyme_and_meter_filter(this_text_sentence,target_rhyme,target_meter,probs,params)
+    short_probability_list = rhyme_and_meter_filter(this_text_sentence,target_rhyme_list,target_meter,probs,params)
     #proceed only if there are tokens in the probability list that are sufficiently likely to form a sensible sentence.
-    if len(short_probability_list)>0:
+    if len(short_probability_list)==0:
+        xprint("! len(short_probability_list)==0")
+        return False
+    else:
         count = 0
+        #for (this_token,this_probability) in short_probability_list:
+        #    xprint(tokenizer.decode(this_token), end = "|")
         for (this_token,this_probability) in short_probability_list:
+            xprint("------------------------------")
             tokens_are_probable_enough_to_continue = this_probability > probability_threshold
             xprint("tokens are probable: ",end = "")
             xprint(tokens_are_probable_enough_to_continue)
-            if not tokens_are_probable_enough_to_continue: 
+            if not tokens_are_probable_enough_to_continue:
+                xprint("! tokens_are_not probable_enough_to_continue")
                 return False
             else:
                 count = count+1
@@ -256,16 +295,24 @@ def grow_branches(these_tokens, probs, input_probability,past,params, prompt_len
                 next_meter = text_to_meter(next_text_sentence,stress_dictionary)
                 xprint(next_meter)
                 if "*" in next_meter[:-1]:
+                    xprint("! * in next meter")
                     return False
                 meter_check = compare_meters(next_meter,target_meter)
                 print(next_text_sentence)
                 if len(next_meter)>len(target_meter):
+                    xprint("! len(next_meter)>len(target_meter)")
                     continue
                 elif len(next_meter)==len(target_meter):
                 #this might be a line we want to keep, so we need to verify that the meter and rhyme are good.
-                    if meter_check:
-                        rhyme_checks_out = rhyme_check(next_text_sentence,target_rhyme,rhyme_dictionary,reverse_rhyme_dictionary,params)
-                        if rhyme_checks_out:
+                    if not meter_check:
+                        xprint("! not meter check")
+                        continue
+                    else:
+                        rhyme_checks_out = rhyme_check(next_text_sentence,target_rhyme_list,rhyme_dictionary,reverse_rhyme_dictionary,params)
+                        if not rhyme_checks_out:
+                            xprint("! rhyme doesn't check out")
+                            continue
+                        else:
                              # the line has completed successfully
                             (word_completion_list,next_past) = expand_node(next_tokens,past)
                             sorted_word_completion_list = sorted(enumerate(word_completion_list), key=lambda x: x[1], reverse=True)
@@ -273,13 +320,12 @@ def grow_branches(these_tokens, probs, input_probability,past,params, prompt_len
                             potential_word_completion = tokenizer.decode(sorted_word_completion_list[0][0])
                             all_tokens = set(range(0,50257))
                             if potential_word_completion[0] in str.ascii_lowercase: #i.e. it starts with a letter instead of a space, so it's continuing a word
-                                continue
-                            
+                                xprint("! potential_word_completion[0] in str.ascii_lowercase")
+                                continue                           
                             elif params.line_end_punctuation_constraint == True:
                                 (end_punctuation_list,next_past) = (word_completion_list,next_past)
                                 for token in all_tokens.difference(end_punctuation):
-                                    end_punctuation_list[token] = 0
-                                
+                                    end_punctuation_list[token] = 0                               
                                 sorted_end_punctuation_list = sorted(enumerate(end_punctuation_list), key=lambda x: x[1], reverse=True)
                                 punctuation_probability = sorted_end_punctuation_list [0][1]  
                                 if punctuation_probability > params.punctuation_probability_threshold:
@@ -290,39 +336,33 @@ def grow_branches(these_tokens, probs, input_probability,past,params, prompt_len
                                     print("*** " + next_text_sentence + "\t" + next_meter)
                                     return next_tokens[prompt_length:]
                                 else:
-                                    print("end punctuation too rare")
+                                    print("! end punctuation too rare")
                                     continue
                             else:
                                 #success!
                                 print("*** " + next_text_sentence + "\t" + next_meter)
-                                return next_tokens[prompt_length:]                      
-                        continue
-                    else:
-                        continue
+                                return next_tokens[prompt_length:]  
                 #If it starts generating strings of punctuation, it rarely recovers. So I put in this hacky check to prevent it.
                 punctuation_repeats = (len(these_tokens)>1 and these_tokens[-2] in punctuation and these_tokens[-1] in punctuation) or (len(these_tokens)>0 and these_tokens[-1] in punctuation and this_token in punctuation)
                 line_is_way_too_long = (len(these_tokens[prompt_length+1:])>20)
                 if next_probability < params.line_probability_threshold or punctuation_repeats or line_is_way_too_long:
-                    if len(these_tokens[prompt_length+1:])>1:
-                        # this returns because if one thing fails the probability check the rest will. Also the repeating punctuation thing needs to be nipped in the bud.
-                        return False
+                    if len(these_tokens[prompt_length+1:])>1:                       
+                        xprint("! len(these_tokens[prompt_length+1:])>1")
+                        return False # this returns because if one thing fails the probability check the rest will. Also the repeating punctuation thing needs to be nipped in the bud.
                     else:
-                        #the start of a line gets some leeway so that it doesn't return false and abandon the whole poem.
-                        continue
+                        xprint("! len(these_tokens[prompt_length+1:])<=1")
+                        continue #the start of a line gets some leeway so that it doesn't return false and abandon the whole poem.
                 else:
                     found = False
                     if meter_check and len(next_meter)<len(target_meter):
                         #this isn't long enough to be a complete line, but it could be the start of a complete line, so we expand it.
                         (next_probability_list,next_past) = expand_node(next_tokens,past)
-                        found = grow_branches(next_tokens,next_probability_list, next_probability, next_past,params,prompt_length,target_rhyme,target_meter)
+                        found = grow_branches(next_tokens,next_probability_list, next_probability, next_past,params,prompt_length,target_rhyme_list,target_meter)
                     if found != False:
+                        xprint("found =", end ="")
+                        xprint(found)
                         return found
-                    continue
-        else:
-            return False
-    else:
-        if len(short_probability_list)>0:
-            return False
+    xprint("! end of function")
     return False
 
 def expand_node(sentence, past):
@@ -423,25 +463,25 @@ def poem_scheme(kind):
         for line in {2,3}:
             meter_scheme[line] = "~`~~`"
         #meter_scheme[0] = "~`" # if you want to start with a prompt like "There once was a girl from"
-        rhyme_scheme = ["",poem_line[0],"",poem_line[2],poem_line[0]]
+        rhyme_scheme = [ "", [poem_line[0]], "", [poem_line[2]], [poem_line[0], poem_line[1]] ]
     if kind == "sonnet":
         number_of_lines = 10
         meter_scheme = [""] * number_of_lines
         for line in range(0,number_of_lines):
             meter_scheme[line] = "~`~`~`~`~`"
-            rhyme_scheme = ["","",poem_line[0],poem_line[1],"","",poem_line[4],poem_line[5],"",poem_line[8]]
+            rhyme_scheme = ["","",[poem_line[0]],[poem_line[1]],"","",[poem_line[4]],[poem_line[5]],"",[poem_line[8]] ]
     if kind == "couplets":
         number_of_lines = 10
         meter_scheme = [""] * number_of_lines
         for line in range(0,number_of_lines):
             meter_scheme[line] = "~`~`~`"
-            rhyme_scheme = ["",poem_line[0],"",poem_line[2],"",poem_line[4],"",poem_line[6],"",poem_line[8]]
+            rhyme_scheme = ["",[poem_line[0]],"",[poem_line[2]],"",[poem_line[4]],"",[poem_line[6]],"",[poem_line[8]] ]
     if kind == "mini-couplets":
         number_of_lines = 20
         meter_scheme = [""] * number_of_lines
         for line in range(0,number_of_lines):
             meter_scheme[line] = "~`~`"
-            rhyme_scheme = ["",poem_line[0],"",poem_line[2],"",poem_line[4],"",poem_line[6],"",poem_line[8],"",poem_line[10],"",poem_line[12],"",poem_line[14],"",poem_line[16],"",poem_line[18]]
+            rhyme_scheme = ["",[poem_line[0]],"",[poem_line[2]],"",[poem_line[4]],"",[poem_line[6]],"",[poem_line[8]],"",[poem_line[10]],"",[poem_line[12]],"",[poem_line[14]],"",[poem_line[16]],"",[poem_line[18]] ]
             params.penultimate_expansion = 10000
     if kind == "ballad":
         number_of_lines = 8
@@ -450,7 +490,7 @@ def poem_scheme(kind):
             meter_scheme[line] = "~`~`~`~`"
         for line in {1,3,5,7}:
             meter_scheme[line] = "~`~`~`"
-        rhyme_scheme = [0,"",0,poem_line[1],0,"",0,poem_line[5]]
+        rhyme_scheme = [0,"",0,[poem_line[1]],0,"",0,[poem_line[5]]]
     return number_of_lines, rhyme_scheme, meter_scheme
             
 #-----------------------------------------------
@@ -480,9 +520,14 @@ with torch.no_grad():
     while line < number_of_lines:
         stuck_counter = 0
         number_of_lines, rhyme_scheme, meter_scheme = poem_scheme(scheme)
-        target_rhyme = tokenizer.decode(rhyme_scheme[line])
+        target_rhyme_list = []
+        for target_rhyme_line in rhyme_scheme[line]:
+            target_rhyme_list.append(tokenizer.decode(target_rhyme_line))
+        if target_rhyme_list == []:
+            target_rhyme_list = ""
+        xprint(target_rhyme_list)
         target_meter = meter_scheme[line]
-        this_line = grow_branches(prompt,probs,1,past,params,len(prompt),target_rhyme,target_meter)
+        this_line = grow_branches(prompt,probs,1,past,params,len(prompt),target_rhyme_list,target_meter)
         if this_line == False:
             print("something went wrong, quitting")
             break
