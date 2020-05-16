@@ -490,9 +490,9 @@ def poem_scheme(kind):
     if kind == "ballad":
         number_of_lines = 16
         meter_scheme = [""] * number_of_lines
-        for line in {0,2,4,6}:
+        for line in {0,2,4,6,8,10,12,14}:
             meter_scheme[line] = "~`~`~`~`"
-        for line in {1,3,5,7}:
+        for line in {1,3,5,7,9,11,13,15}:
             meter_scheme[line] = "~`~`~`"
         rhyme_scheme = [[0],"",[0],[poem_line[1]],[0],"",[0],[poem_line[5]],[0],"",[0],[poem_line[9]],[0],"",[0],[poem_line[13]]]
     return number_of_lines, rhyme_scheme, meter_scheme
