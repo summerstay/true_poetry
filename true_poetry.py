@@ -222,6 +222,9 @@ def rhyme_and_meter_filter(this_text_sentence,target_rhyme_list,target_meter,pro
             # either a rhyming word or a one-syllable word which could be followed by a rhyming word is okay.
             safeset = syllable_tokens[1].union(these_rhyming_tokens)
             for t in range(0,50257):
+                if t in syllable_tokens[1]:
+                    probs[t] =probs[t]/2
+            for t in range(0,50257):
                 if t in safeset:
                     pass
                 else:
@@ -259,6 +262,7 @@ def grow_branches(these_tokens, probs, input_probability,past,params, prompt_len
     global past_backup 
     stuck_counter = stuck_counter + 1
     if stuck_counter > params.stuck_counter_limit:
+        params.probability_threshold = params.probability_threshold/2
         stuck_counter = 0
         past = past_backup
         these_tokens = these_tokens[:prompt_length]    
@@ -484,13 +488,13 @@ def poem_scheme(kind):
             rhyme_scheme = ["",[poem_line[0]],"",[poem_line[2]],"",[poem_line[4]],"",[poem_line[6]],"",[poem_line[8]],"",[poem_line[10]],"",[poem_line[12]],"",[poem_line[14]],"",[poem_line[16]],"",[poem_line[18]] ]
             params.penultimate_expansion = 10000
     if kind == "ballad":
-        number_of_lines = 8
+        number_of_lines = 16
         meter_scheme = [""] * number_of_lines
         for line in {0,2,4,6}:
             meter_scheme[line] = "~`~`~`~`"
         for line in {1,3,5,7}:
             meter_scheme[line] = "~`~`~`"
-        rhyme_scheme = [0,"",0,[poem_line[1]],0,"",0,[poem_line[5]]]
+        rhyme_scheme = [[0],"",[0],[poem_line[1]],[0],"",[0],[poem_line[5]],[0],"",[0],[poem_line[9]],[0],"",[0],[poem_line[13]]]
     return number_of_lines, rhyme_scheme, meter_scheme
             
 #-----------------------------------------------
