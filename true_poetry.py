@@ -18,7 +18,7 @@ class Struct:
     pass
 params = Struct()
 params.rhyme_set_size = 20  # if a word will later be rhymed with, at least this many rhyming words must exist
-params.probability_threshold = .0005 # a token must have at least this probability of being the next token. .05 = better quality but slower; .005 = worse quality but faster
+params.probability_threshold = .00005 # a token must have at least this probability of being the next token. .02 = better quality but slower; .0005 = worse quality but faster
 params.line_probability_threshold = 0 #total multiplied out probability of entire line of tokens can be no lower than this. 0 means this isn't being used.
 params.ultimate_expansion = 1000 # no more than this many words will be tried as the last syllable for any previous phrase
 params.penultimate_expansion = 10 # no more than this many words will be tried for the next to last syllable for any previous phrase
@@ -26,9 +26,8 @@ params.other_expansion = 10 # no more than this many words will be tried for the
 params.random_seed = 28 # if the seed and prompt are the same, the poem will be the same
 params.line_end_punctuation_constraint = True
 params.punctuation_probability_threshold = .001
-params.model_name = "gpt2-xl" # change this to "gpt2-xl" to get started. "poetry" requires a lot more effort to get running-- see the README for details.
+params.model_name = "poetry" # change this to "gpt2-xl" to get started. "poetry" requires a lot more effort to get running-- see the README for details.
 params.stuck_counter_limit = 1000
-
 debug = False
 
 def xprint(*args, **kwargs):
@@ -129,13 +128,10 @@ def rhyme_check(text1,target_rhyme_list,rhyme_dictionary,reverse_rhyme_dictionar
                 xprint("! a word is rhyming with itself")
                 return False
         if (last_word1 in rhyme_dictionary) and (last_word2 in rhyme_dictionary):
-             #this is where you allow slant rhymes.
             rhyme1 = rhyme_dictionary[last_word1]
             rhyme2 = rhyme_dictionary[last_word2]
             rhyme1 = rhyme1.replace("0","1")
             rhyme2 = rhyme2.replace("0","1")
-            rhyme1 = rhyme1.replace("IH","EH")
-            rhyme2 = rhyme2.replace("IH","EH")
             #print(rhyme1 + " vs. " +  rhyme2)
             if (rhyme1 == rhyme2):
                 return True
@@ -203,6 +199,10 @@ def rhyme_and_meter_filter(this_text_sentence,target_rhyme_list,target_meter,pro
     #rhyme_filter
     xprint("meter_length = ", end = "")
     xprint(len(this_meter))
+    too_common_tokens = syllable_tokens[1].union(acceptable_punctuation)
+    for t in range(0,50257):
+            if t in too_common_tokens:
+                probs[t] =probs[t]/15    
     if len(target_rhyme)>0 and target_rhyme != "!":
         target_rhyme_words = target_rhyme.split(" ")
         last_target_rhyme_word = target_rhyme_words[-1].strip().lower()     
@@ -211,7 +211,7 @@ def rhyme_and_meter_filter(this_text_sentence,target_rhyme_list,target_meter,pro
         xprint("target rhyme =",end="")
         xprint(last_target_rhyme_word)
         these_rhyming_tokens = rhyming_tokens[last_target_rhyme_word]
-        xprint(tokenizer.decode(these_rhyming_tokens))           
+        xprint(tokenizer.decode(these_rhyming_tokens))  
         if len(this_meter)==len(target_meter)-1:
             for t in range(0,50257):
                 if t in these_rhyming_tokens:
@@ -221,9 +221,6 @@ def rhyme_and_meter_filter(this_text_sentence,target_rhyme_list,target_meter,pro
         elif len(this_meter)==len(target_meter)-2:
             # either a rhyming word or a one-syllable word which could be followed by a rhyming word is okay.
             safeset = syllable_tokens[1].union(these_rhyming_tokens)
-            for t in range(0,50257):
-                if t in syllable_tokens[1]:
-                    probs[t] =probs[t]/2
             for t in range(0,50257):
                 if t in safeset:
                     pass
@@ -458,6 +455,9 @@ def create_rhyme_dictionary(tokenizer):
     return rhyme_dictionary, reverse_rhyme_dictionary, bad_rhymes, syllable_count_dictionary, rhyming_tokens, syllable_tokens
 
 def poem_scheme(kind):
+    #in "rhyme_scheme" the first thing in the list for each line must be the line you want to rhyme with. 
+    # After that you can list other lines you want to avoid repeating the last word.
+    # "meter_scheme" is ` for accented, ~ for unaccented syllable. 
     global poem_line
     if kind == "limerick":
         number_of_lines = 5
@@ -478,7 +478,7 @@ def poem_scheme(kind):
         number_of_lines = 10
         meter_scheme = [""] * number_of_lines
         for line in range(0,number_of_lines):
-            meter_scheme[line] = "~`~`~`"
+            meter_scheme[line] = "`~`~`~"
             rhyme_scheme = ["",[poem_line[0]],"",[poem_line[2]],"",[poem_line[4]],"",[poem_line[6]],"",[poem_line[8]] ]
     if kind == "mini-couplets":
         number_of_lines = 20
@@ -521,8 +521,12 @@ with torch.no_grad():
     number_of_lines, rhyme_scheme, meter_scheme = poem_scheme(scheme)
     poem_line = [""] * number_of_lines  
     line = 0
+    backup_prompts = [""]*100
+    backup_pasts = [""]*100
     while line < number_of_lines:
         stuck_counter = 0
+        backup_prompts[line]=prompt
+        backup_pasts[line]=past
         number_of_lines, rhyme_scheme, meter_scheme = poem_scheme(scheme)
         target_rhyme_list = []
         for target_rhyme_line in rhyme_scheme[line]:
