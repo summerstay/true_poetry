@@ -28,6 +28,7 @@ params.line_end_punctuation_constraint = True
 params.punctuation_probability_threshold = .001
 params.model_name = "poetry" # change this to "gpt2-xl" to get started. "poetry" requires a lot more effort to get running-- see the README for details.
 params.stuck_counter_limit = 1000
+params.one_syllable_discouragement = 20
 debug = False
 
 def xprint(*args, **kwargs):
@@ -199,10 +200,12 @@ def rhyme_and_meter_filter(this_text_sentence,target_rhyme_list,target_meter,pro
     #rhyme_filter
     xprint("meter_length = ", end = "")
     xprint(len(this_meter))
+    # lower the probability of one-syllable words, to allow longer words to show up.
     too_common_tokens = syllable_tokens[1].union(acceptable_punctuation)
     for t in range(0,50257):
             if t in too_common_tokens:
-                probs[t] =probs[t]/15    
+                probs[t] =probs[t]/params.one_syllable_discouragement  
+    #"!" is a code for a non-rhyming sentence. "" is code for a sentence that will be rhymed with later.
     if len(target_rhyme)>0 and target_rhyme != "!":
         target_rhyme_words = target_rhyme.split(" ")
         last_target_rhyme_word = target_rhyme_words[-1].strip().lower()     
